@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <style>
+      .qr-canvas {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h3>vCard Data</h3>
+      <pre id="vcardData"></pre>
+    </div>
+    <div>
+      <h3>QR Code</h3>
+      <div id="qrcode"></div>
+      <button id="download-btn" style="display: none">Download QR Code</button>
+    </div>
+    <script>
+      function generateQRCode(vCard, fileName) {
+        const qr = qrcode(0, "L");
+        qr.addData(vCard);
+        qr.make();
+
+        const canvas = document.createElement("canvas");
+        const size = 490;
+        const borderSize = 10;
+        canvas.width = size + borderSize * 2;
+        canvas.height = size + borderSize * 2;
+
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const tileSize = size / qr.getModuleCount();
+        ctx.fillStyle = "#000000";
+        for (let row = 0; row < qr.getModuleCount(); row++) {
+          for (let col = 0; col < qr.getModuleCount(); col++) {
+            ctx.fillStyle = qr.isDark(row, col) ? "#000000" : "#FFFFFF";
+            ctx.fillRect(
+              col * tileSize + borderSize,
+              row * tileSize + borderSize,
+              tileSize,
+              tileSize
+            );
+          }
+        }
+
+        const qrCodeDiv = document.getElementById("qrcode");
+        qrCodeDiv.innerHTML = "";
+        canvas.classList.add("qr-canvas");
+        qrCodeDiv.appendChild(canvas);
+
+        const downloadBtn = document.getElementById("download-btn");
+        downloadBtn.style.display = "block";
+        downloadBtn.onclick = function () {
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = `${fileName}_vCard_QR.png`;
+          link.click();
+        };
+      }
+
+      function createVCard(data) {
+        const vCard = `
+BEGIN:VCARD
+VERSION:3.0
+N:${data.lname};${data.fname}
+FN:${data.fname} ${data.lname}
+ORG:${data.company}
+TITLE:${data.position}
+TEL;type=HOME:+${data.personalphone}
+TEL;type=WORK:${data.workphone}
+EMAIL;type=HOME:${data.personalemail}
+EMAIL;type=WORK:${data.workemail}
+ADR:;;${data.street};${data.state};${data.city};${data.postalcode};${data.country}
+URL;type=WORK:${data.website}
+URL;type=ezeekard:${data.ezkwebsite}
+END:VCARD
+`.trim();
+        return vCard;
+      }
+
+      function displayVCard() {
+        google.script.run
+          .withSuccessHandler(function (data) {
+            if (data) {
+              const vCard = createVCard(data);
+              document.getElementById("vcardData").innerText = vCard;
+              const fileName = `${data.fname}_${data.lname}`;
+              generateQRCode(vCard, fileName);
+            } else {
+              document.getElementById("vcardData").innerText =
+                "No data available or row not selected.";
+            }
+          })
+          .getSelectedRowData();
+      }
+
+      displayVCard();
+    </script>
+  </body>
+</html>
+<!-- BEGIN:VCARD
+VERSION:4.0
+N:${data.lname};${data.fname}
+FN:${data.fname} ${data.lname}
+ORG:${data.company}
+TITLE:${data.position}
+TEL;TYPE=home,voice;VALUE=uri:tel:+977${data.personalphone}
+TEL;TYPE=work,voice;VALUE=uri:tel:+977${data.workphone}
+EMAIL;TYPE=home:${data.personalemail}
+EMAIL;TYPE=work:${data.workemail}
+ADR;TYPE=home;LABEL="${data.street}\n${data.state}\n${data.city}\n${data.postalcode}\n${data.country}":;;${data.street};${data.state};${data.city};${data.postalcode};${data.country}
+URL:${data.website}
+URL:${data.ezkwebsite}
+END:VCARD -->
